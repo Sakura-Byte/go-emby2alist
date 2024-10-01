@@ -1,6 +1,7 @@
 package emby
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -55,6 +56,14 @@ func Fetch(uri, method string, header http.Header, body map[string]interface{}) 
 	return RawFetch(uri, method, header, https.MapBody(body))
 }
 
+func removeJsonNesting(body string) string {
+	if strings.HasPrefix(body, "{{") && strings.HasSuffix(body, "}}") {
+		// 去掉最外层的 { 和 }
+		return body[1 : len(body)-1]
+	}
+	return body
+}
+
 // RawFetch 请求 emby api 接口, 使用流式请求体
 //
 // 如果 uri 中不包含 token, 自动从配置中取 token 进行拼接
@@ -76,19 +85,15 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 		header.Set("Content-Type", "application/json;charset=utf-8")
 	}
 	// 如果body以{{开头，以}}结尾，则认为是json错误嵌套，替换掉一层
-	// 为了兼容emby的错误返回
 	if body != nil {
 		bodyBytes, err := io.ReadAll(body)
 		if err != nil {
-			log.Printf("Failed to read request body: %v", err)
-			return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "读取请求失败: " + err.Error()}, nil
+			log.Printf("Error reading body: %v", err)
+			return model.HttpRes[*jsons.Item]{}, nil
 		}
 		bodyStr := string(bodyBytes)
-		if strings.HasPrefix(bodyStr, "{{") && strings.HasSuffix(bodyStr, "}}") {
-			bodyStr = strings.TrimPrefix(bodyStr, "{")
-			bodyStr = strings.TrimSuffix(bodyStr, "}")
-		}
-		body = io.NopCloser(strings.NewReader(bodyStr))
+		bodyStr = removeJsonNesting(bodyStr)
+		body = io.NopCloser(bytes.NewBufferString(bodyStr))
 	}
 	log.Printf("Sending request to: %s with method: %s", u, method)
 	log.Printf("Request body: %v", body)
