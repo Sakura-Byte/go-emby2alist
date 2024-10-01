@@ -64,7 +64,7 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 
 	// 1 检查 uri 中是否含有 token
 	u := host + uri
-	if !strings.Contains(uri, QueryApiKeyName) && !strings.Contains(uri, "QueryTokenName") {
+	if !strings.Contains(uri, QueryApiKeyName) && !strings.Contains(uri, QueryTokenName) {
 		u = urls.AppendArgs(u, QueryApiKeyName, token)
 	}
 
