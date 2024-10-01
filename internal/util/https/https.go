@@ -94,9 +94,7 @@ func MapBody(body map[string]interface{}) io.ReadCloser {
 	if body == nil {
 		return nil
 	}
-	log.Printf("MapBody: %v", body)
 	bodyBytes, err := json.Marshal(body)
-	log.Printf("MapBody(json): %v", string(bodyBytes))
 	if err != nil {
 		log.Printf("MapBody 转换失败, body: %v, err : %v", body, err)
 		return nil

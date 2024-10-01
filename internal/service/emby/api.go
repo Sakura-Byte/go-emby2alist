@@ -1,7 +1,6 @@
 package emby
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -53,13 +52,6 @@ func AddDefaultApiKey(c *gin.Context) {
 //
 // 如果 uri 中不包含 token, 自动从配置中取 token 进行拼接
 func Fetch(uri, method string, header http.Header, body map[string]interface{}) (model.HttpRes[*jsons.Item], http.Header) {
-	// 在调用 MapBody 之前
-	bodyJSON, err := json.MarshalIndent(body, "", "  ")
-	if err != nil {
-		log.Printf("Failed to marshal body for logging: %v", err)
-	} else {
-		log.Printf("Constructed Request Body JSON:\n%s", string(bodyJSON))
-	}
 	return RawFetch(uri, method, header, https.MapBody(body))
 }
 
@@ -83,7 +75,21 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 	if header.Get("Content-Type") == "" {
 		header.Set("Content-Type", "application/json;charset=utf-8")
 	}
-
+	// 如果body以{{开头，以}}结尾，则认为是json错误嵌套，替换掉一层
+	// 为了兼容emby的错误返回
+	if body != nil {
+		bodyBytes, err := io.ReadAll(body)
+		if err != nil {
+			log.Printf("Failed to read request body: %v", err)
+			return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "读取请求失败: " + err.Error()}, nil
+		}
+		bodyStr := string(bodyBytes)
+		if strings.HasPrefix(bodyStr, "{{") && strings.HasSuffix(bodyStr, "}}") {
+			bodyStr = strings.TrimPrefix(bodyStr, "{")
+			bodyStr = strings.TrimSuffix(bodyStr, "}")
+		}
+		body = io.NopCloser(strings.NewReader(bodyStr))
+	}
 	log.Printf("Sending request to: %s with method: %s", u, method)
 	log.Printf("Request body: %v", body)
 	log.Printf("Request header: %v", header)
