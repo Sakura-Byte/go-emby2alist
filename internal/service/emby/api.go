@@ -77,7 +77,8 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 	}
 
 	log.Printf("Sending request to: %s with method: %s", u, method)
-
+	log.Printf("Request body: %v", body)
+	log.Printf("Request header: %v", header)
 	resp, err := https.Request(method, u, header, body)
 	if err != nil {
 		log.Printf("Request failed: %v", err)
@@ -92,7 +93,7 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 		return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "读取响应失败: " + err.Error()}, nil
 	}
 	log.Printf("Response body: %s", string(bodyBytes))
-
+	log.Printf("Response header: %v", resp.Header)
 	result, err := jsons.New(string(bodyBytes))
 	if err != nil {
 		log.Printf("Failed to parse response: %v", err)
