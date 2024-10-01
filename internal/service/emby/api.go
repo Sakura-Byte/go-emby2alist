@@ -3,6 +3,7 @@ package emby
 import (
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -75,8 +76,11 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 		header.Set("Content-Type", "application/json;charset=utf-8")
 	}
 
+	log.Printf("Sending request to: %s with method: %s", u, method)
+
 	resp, err := https.Request(method, u, header, body)
 	if err != nil {
+		log.Printf("Request failed: %v", err)
 		return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "请求发送失败: " + err.Error()}, nil
 	}
 	defer resp.Body.Close()
@@ -84,10 +88,14 @@ func RawFetch(uri, method string, header http.Header, body io.ReadCloser) (model
 	// 3 读取响应
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Printf("Failed to read response body: %v", err)
 		return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "读取响应失败: " + err.Error()}, nil
 	}
+	log.Printf("Response body: %s", string(bodyBytes))
+
 	result, err := jsons.New(string(bodyBytes))
 	if err != nil {
+		log.Printf("Failed to parse response: %v", err)
 		return model.HttpRes[*jsons.Item]{Code: http.StatusBadRequest, Msg: "解析响应失败: " + err.Error()}, nil
 	}
 	return model.HttpRes[*jsons.Item]{Code: http.StatusOK, Data: result}, resp.Header
